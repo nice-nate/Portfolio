@@ -1,0 +1,184 @@
+; Project 3                           (Source_Project_3.asm)
+
+.386
+.model flat,stdcall
+.stack 4096
+ExitProcess proto,dwExitCode:dword
+Crlf PROTO
+ReadInt PROTO
+WriteInt PROTO
+WriteString PROTO
+WriteChar PROTO
+WriteDec PROTO
+
+
+.data
+AlbTable dword 5 DUP(0)
+Rowsize = ($ - AlbTable)
+         dword 5 DUP(0) 
+         dword 5 DUP(0)
+         dword 5 DUP(0)
+row_index sdword 0       ;change to dword, only row_index needs to be sdword
+column_index sdword 0
+UT sdword 0
+pcount dword 0
+ofst dword 0
+ofst2 dword 0
+ctot dword 0
+
+promptSAPR byte "Enter data for Salesperson (1-4)",0dh,0ah,0
+promptUT byte "Enter data for Unit (1-1000000)",0dh,0ah,0
+promptPT byte "Enter data for Product (1-5)",0dh,0ah,0
+SAPR byte "Salesperson ",0
+PT byte "Product ",0
+error byte "Value is not within range, please try again.",0dh,0ah,0
+
+.code
+main proc
+
+;Prompts user to input data and checks if values are valid -----------------
+
+L1:
+mov edx,OFFSET promptSAPR     ; sets prompt to be used by WriteString
+call WriteString              ; acceptable-input message
+
+call ReadInt                  ; input for row
+jz err
+sub eax,1                     ; used to set input to correct row for addressing
+mov row_index,eax
+cmp eax,4                     ; check if value is acceptable
+jge err
+cmp eax,0
+jl report
+push eax                      ; allows eax to be used for storing unit amount and column index
+
+mov edx,OFFSET promptUT       ; sets prompt to be used by WriteString
+call WriteString     
+call ReadInt                  ; input for unit
+mov UT,eax
+cmp eax,0                     ; check if value is acceptable
+jl err
+cmp eax,1000000
+jge err
+push eax
+
+mov edx,OFFSET promptPT       ; sets prompt to be used by WriteString
+call WriteString     
+call ReadInt                  ; input for column
+jz err
+sub eax,1                     ; used to set input to correct column for addressing
+mov column_index,eax          ; needs to be done as a pop in pmem
+cmp eax,5
+jge err
+cmp eax,0
+jl err
+push eax
+jmp pmem
+
+err:                          ; error message if incorrect input is used
+mov edx,OFFSET error          ; not sure how to generate message if overflow or other errors are issued
+call WriteString
+call Crlf
+jmp L1
+
+;Stores input info into correct mem address ------------------------------------------
+
+pmem:
+pop column_index              ; get input data from stack
+pop UT
+pop row_index
+
+mov ebx,OFFSET AlbTable       ; table offset is moved into ebx
+mov eax,RowSize               ; size of row into eax
+imul row_index                ; multiply by the amount of rows
+add ebx,eax                   ; add that to the base register
+mov ecx,4                     ; multiply column index by size of dword
+mov eax,column_index          
+imul ecx
+add ebx,eax                   ; add the column size to the ebx register
+mov eax,UT                    ; place the unit value into eax register
+mov [ebx],eax                 ; store UT value into ebx memory location
+
+mov eax,[ebx]                 ; unecessary, used only to show on screen
+call WriteInt
+call Crlf
+jmp L1                        ; continue jumping as long as negative input is not read
+
+;Generates row summation part of report with nested looping structure ------------------------
+
+report:
+mov ebx,OFFSET Albtable
+
+L3:
+inc pcount                    ; people counter: counter for external loop
+cmp pcount,4                  ; comparison (pcount < 4) False -> next part of report
+jg report2                    ; exit loop to calculate totals of each product sold
+
+mov eax,[ebx]                 ; moves appropriate mem address value to eax register
+mov ecx,4                     ; start internal counter
+L2:
+add ebx,4                     ; increase mem address to next column member of array
+add eax,[ebx]                 ; adds previous mem addresses value to eax
+loop L2
+add ebx,4                     ; gets ebx reg ready for next row sum
+
+mov edx,OFFSET SAPR           ; print "Salesperson " then (pcount) then (eax value)
+call WriteString
+push eax                      ; stores row sum so eax can be used to format report
+mov eax,pcount                ; used to print Salesperson id
+call WriteDec
+mov al,' '                    ; used to create spaces between ints and strings
+call WriteChar
+pop eax                       ; row sum can now be printed
+call WriteInt
+call Crlf
+jmp L3                        ; used to skip past ebx initializing AlbTables mem
+
+;Column counter, finds totals of each product -------------------------------------------------
+report2: 
+
+mov pcount,0
+mov ofst2,4
+mov eax,0
+
+L5:
+inc pcount                    ; people counter: counter for external loop
+cmp pcount,5                  ; comparison (pcount < 5) False -> next part of report
+jg finish
+
+
+push eax
+mov ebx,OFFSET Albtable
+mov eax,pcount
+sub eax,1                     ; calculates row offset
+imul ofst2
+add ebx,eax                   ; moves appropriate mem address value to eax register
+pop eax
+mov eax,[ebx]
+mov ecx,3
+
+
+
+
+L4:
+add ebx,RowSize               ; increase mem address to next column member of array
+add eax,[ebx]                 ; adds previous mem addresses value to eax
+loop L4
+
+push eax
+mov edx,OFFSET PT           ; print "Salesperson " then (pcount) then (eax value)
+call WriteString                      ; stores row sum so eax can be used to format report
+mov eax,pcount                ; used to print Product id
+call WriteDec
+mov al,' '                    ; used to create spaces between ints and strings
+call WriteChar
+pop eax
+call WriteInt
+call Crlf
+jmp L5                        ; used to skip past ebx initializing AlbTables mem
+
+finish:
+
+	invoke ExitProcess,0
+main endp
+end main

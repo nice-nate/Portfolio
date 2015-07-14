@@ -1,0 +1,87 @@
+.data
+buffer dword 21 DUP(0)                         ; input buffer
+byteCount dword ?                              ; holds counter
+szSAPR dword ?                                 ;Salesperson substring size
+szUT dword ?                                   ;Unit substring size
+szPT dword ?                                   ;Product substring size
+szSTRT dword ?                                 ;Starting address
+SAPR dword ?                                   ;
+UT dword ?                                     ;
+PT dword ?                                     ;
+STRT dword ?                                   ;
+
+.code
+
+mov edx,OFFSET buffer                          ; point to the buffer
+mov ecx,SIZEOF buffer                          ; specify max characters
+call ReadString                                ; input the string
+mov byteCount,eax                              ;number of characters
+mov ecx,eax
+
+
+;loop needs to be made to show where counter is in the string to find diff ------------------------------
+
+mov edi,OFFSET buffer                          ; EDI points to the string
+mov al,' '                                     ; search for a space
+;mov ecx,SIZEOF buffer                        ; set the search count
+cld                                            ; direction = forward
+push ecx  
+L1:
+repne scasb                                    ; repeat while not equal
+jnz popinfo                                    ; start up popinfo if letter not found
+push ecx                                       ; letter found, push to ecx to find the seperations for each input
+jmp L1
+
+;finds distance between 2 mem locations -----------------------------------------------------------------
+
+popinfo:
+mov szPT,0
+pop szUT
+pop szSAPR
+pop szSTRT
+
+mov eax,szSAPR
+mov ecx,szSTRT
+sub ecx,eax
+push ecx
+
+mov eax,szUT
+mov ecx,szSAPR
+sub ecx,eax
+push ecx
+
+mov eax,szPT
+mov ecx,szUT
+sub ecx,eax
+push ecx
+
+pop szPT
+pop szUT
+pop szSAPR
+                                             
+;move ministrings into variables to process info ----------------------------------------------------------
+
+cld
+mov ecx,szSAPR                              ; set REP counter
+mov esi,OFFSET buffer                        ; ESI points to source
+mov edi,OFFSET SAPR                          ; EDI points to target
+rep movsd                                    ; copy doublewords
+mov edx,OFFSET SAPR
+call WriteString
+call Crlf
+
+mov ecx,szUT                              ; set REP counter
+mov esi,OFFSET buffer + LENGTHOF SAPR                    ; ESI points to source
+mov edi,OFFSET UT                          ; EDI points to target
+rep movsd                                    ; copy doublewords
+mov edx,OFFSET UT
+call WriteString
+call Crlf
+
+mov ecx,szPT                              ; set REP counter
+mov esi,OFFSET buffer + (SIZEOF szSAPR / 4) + 1 + (SIZEOF szUT / 4) + 1                        ; ESI points to source
+mov edi,OFFSET PT                          ; EDI points to target
+rep movsd                                    ; copy doublewords
+mov edx,OFFSET PT
+call WriteString
+call Crlf
